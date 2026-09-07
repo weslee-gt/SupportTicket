@@ -10,14 +10,21 @@ def get_tickets(
     db: Session,
     status: Optional[str] = None,
     priority: Optional[str] = None,
+    limit: int = 100,
+    offset: int = 0,
 ) -> List[models.Ticket]:
-    """Retrieve all tickets, optionally filtered by status and/or priority."""
+    """Retrieve one page of tickets, optionally filtered by status and/or priority."""
     query = db.query(models.Ticket)
     if status:
         query = query.filter(models.Ticket.status == status)
     if priority:
         query = query.filter(models.Ticket.priority == priority)
-    return query.order_by(models.Ticket.createdAt.desc(), models.Ticket.id.desc()).all()
+    return (
+        query.order_by(models.Ticket.createdAt.desc(), models.Ticket.id.desc())
+        .offset(offset)
+        .limit(limit)
+        .all()
+    )
 
 
 def get_ticket(db: Session, ticket_id: int) -> Optional[models.Ticket]:

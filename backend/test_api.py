@@ -129,6 +129,40 @@ def test_validation_errors():
     assert res.status_code == 422
 
 
+def test_pagination_limit_and_offset():
+    created_ids = []
+    for i in range(3):
+        res = client.post(
+            "/api/tickets",
+            json={
+                "title": f"Pagination fixture {i}",
+                "description": "Created to verify limit/offset paging.",
+                "priority": "Low",
+                "requesterName": "Paging Tester",
+            },
+        )
+        assert res.status_code == 201
+        created_ids.append(res.json()["id"])
+
+    try:
+        everything = client.get("/api/tickets").json()
+        assert len(everything) >= 3
+
+        first_page = client.get("/api/tickets", params={"limit": 2}).json()
+        assert [t["id"] for t in first_page] == [t["id"] for t in everything[:2]]
+
+        second_page = client.get("/api/tickets", params={"limit": 2, "offset": 2}).json()
+        assert [t["id"] for t in second_page] == [t["id"] for t in everything[2:4]]
+
+        # Out-of-range paging parameters are rejected by validation
+        assert client.get("/api/tickets", params={"limit": 0}).status_code == 422
+        assert client.get("/api/tickets", params={"offset": -1}).status_code == 422
+        assert client.get("/api/tickets", params={"limit": 501}).status_code == 422
+    finally:
+        for ticket_id in created_ids:
+            client.delete(f"/api/tickets/{ticket_id}")
+
+
 if __name__ == "__main__":
     import pytest
     import sys
