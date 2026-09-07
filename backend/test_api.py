@@ -129,6 +129,37 @@ def test_validation_errors():
     assert res.status_code == 422
 
 
+def test_search_tickets_by_text():
+    marker = "zq7f3a-search-marker"
+    payload = {
+        "title": f"Printer jam {marker}",
+        "description": "Paper is stuck in tray two",
+        "priority": "Low",
+        "requesterName": "Search Tester",
+    }
+    created = client.post("/api/tickets", json=payload).json()
+
+    try:
+        # Case-insensitive match on the title
+        res = client.get("/api/tickets", params={"q": marker.upper()})
+        assert res.status_code == 200
+        assert [t["id"] for t in res.json()] == [created["id"]]
+
+        # Description and requester name are searched as well
+        by_desc = client.get("/api/tickets", params={"q": "tray two"}).json()
+        assert created["id"] in [t["id"] for t in by_desc]
+        by_requester = client.get("/api/tickets", params={"q": "search tester"}).json()
+        assert created["id"] in [t["id"] for t in by_requester]
+
+        # Search composes with the existing status/priority filters
+        assert client.get("/api/tickets", params={"q": marker, "status": "Resolved"}).json() == []
+
+        # No match returns an empty list, not an error
+        assert client.get("/api/tickets", params={"q": "no-such-ticket-anywhere"}).json() == []
+    finally:
+        client.delete(f"/api/tickets/{created['id']}")
+
+
 if __name__ == "__main__":
     import pytest
     import sys

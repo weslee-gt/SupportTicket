@@ -62,12 +62,18 @@ def list_tickets(
     priority: Optional[schemas.PriorityEnum] = Query(
         default=None, description="Filter tickets by priority"
     ),
+    q: Optional[str] = Query(
+        default=None,
+        min_length=1,
+        max_length=100,
+        description="Case-insensitive search across title, description and requester name",
+    ),
     db: Session = Depends(get_db),
 ):
-    """Retrieve all support tickets, optionally filtered by status and/or priority."""
+    """Retrieve all support tickets, optionally filtered by status, priority and/or a text search."""
     status_filter = status.value if status else None
     priority_filter = priority.value if priority else None
-    return crud.get_tickets(db, status=status_filter, priority=priority_filter)
+    return crud.get_tickets(db, status=status_filter, priority=priority_filter, q=q)
 
 
 @app.post(

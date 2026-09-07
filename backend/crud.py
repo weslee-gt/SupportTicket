@@ -1,5 +1,6 @@
 from datetime import datetime, timezone, timedelta
 from typing import List, Optional
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 import models
 import schemas
@@ -10,13 +11,23 @@ def get_tickets(
     db: Session,
     status: Optional[str] = None,
     priority: Optional[str] = None,
+    q: Optional[str] = None,
 ) -> List[models.Ticket]:
-    """Retrieve all tickets, optionally filtered by status and/or priority."""
+    """Retrieve all tickets, optionally filtered by status, priority and/or a text search."""
     query = db.query(models.Ticket)
     if status:
         query = query.filter(models.Ticket.status == status)
     if priority:
         query = query.filter(models.Ticket.priority == priority)
+    if q:
+        pattern = f"%{q.strip()}%"
+        query = query.filter(
+            or_(
+                models.Ticket.title.ilike(pattern),
+                models.Ticket.description.ilike(pattern),
+                models.Ticket.requesterName.ilike(pattern),
+            )
+        )
     return query.order_by(models.Ticket.createdAt.desc(), models.Ticket.id.desc()).all()
 
 
